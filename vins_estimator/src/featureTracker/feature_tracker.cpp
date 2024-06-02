@@ -202,8 +202,8 @@ map<int, vector<pair<int, Eigen::Matrix<double, 7, 1>>>> FeatureTracker::trackIm
            track_cnt：记录特征点成功跟踪的次数
            ATTENTION：ids和track_cnt都只是记录当前帧成功跟踪到的特征点！！！
            如果没有被当前帧成功看到，那么这个点就会从ids和track_cnt中被剔除
-           这应该和VINS的某些策略息息相关：因为VINS的关键帧选取就是——最新帧和次新帧的视差对比，从而判断是丢弃最旧帧或是丢弃次新帧
-           这样永远都可以将新帧进行保留，而且不需要过多历史帧信息
+           这应该和VINS的某些策略息息相关：因为VINS的关键帧选取就是——最新帧和次新帧的视差对比，
+           从而判断是丢弃最旧帧或是丢弃次新帧，这样永远都可以将最新帧进行保留，而且不需要过多历史帧信息
         */
         reduceVector(ids, status);
         reduceVector(track_cnt, status);
@@ -282,7 +282,7 @@ map<int, vector<pair<int, Eigen::Matrix<double, 7, 1>>>> FeatureTracker::trackIm
     //       需要和ORB中的相关处理进行比较——光流跟踪和描述子匹配的差异之一
     cur_un_pts = undistortedPts(cur_pts, m_camera[0]);
 
-    // Step 4、计算当前特征点速度
+    // Step 4、计算当前特征点速度，为了做时间延时估计
     pts_velocity = ptsVelocity(ids, cur_un_pts, cur_un_pts_map, prev_un_pts_map);
 
     // Step 5、若是双目，需要额外进行一些处理

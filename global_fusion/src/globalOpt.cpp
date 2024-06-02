@@ -245,7 +245,8 @@ void GlobalOptimization::optimize()
             	    WGPS_T_body.block<3, 3>(0, 0) = Eigen::Quaterniond(globalPose[3], globalPose[4], 
             	                                                        globalPose[5], globalPose[6]).toRotationMatrix();
             	    WGPS_T_body.block<3, 1>(0, 3) = Eigen::Vector3d(globalPose[0], globalPose[1], globalPose[2]);
-            	    WGPS_T_WVIO = WGPS_T_body * WVIO_T_body.inverse();
+            	    // VIO位姿到GPS位姿的转换关系
+                    WGPS_T_WVIO = WGPS_T_body * WVIO_T_body.inverse();
             	}
             }
             updateGlobalPath();

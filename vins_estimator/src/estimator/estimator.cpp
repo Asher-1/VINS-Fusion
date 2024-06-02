@@ -112,8 +112,8 @@ void Estimator::setParameter()
 
     std::cout << "MULTIPLE_THREAD is " << MULTIPLE_THREAD << '\n';
     // 如果是多线程模式，就是一个线程做光流，一个线程做后端优化
-    // 否则，就是一个做完光流之后在做线程优化,串行处理
-    // 在vinsfusion有两种获取数据的方式，一种是euroc数据集一样使用rosbag包来获取，通常这种情况下对实时性要求比较高
+    // 否则，就是一个线程做完光流之后再做后端优化,串行处理
+    // 在vins-fusion有两种获取数据的方式，一种是euroc数据集一样使用rosbag包来获取，通常这种情况下对实时性要求比较高
     // 另一种是kitti数据集一样读取离线数据，此时对实时性要求就比较低
     if (MULTIPLE_THREAD && !initThreadFlag)
     {
@@ -215,7 +215,7 @@ void Estimator::inputImage(double t, const cv::Mat &_img, const cv::Mat &_img1)
     }
 }
 
-// 两个作用，一个是送入把imu数据送入buffer，另一个是输出高频率里程计
+// 两个作用，一个是把imu数据送入buffer，另一个是输出高频率里程计
 void Estimator::inputIMU(double t, const Vector3d &linearAcceleration, const Vector3d &angularVelocity)
 {
     mBuf.lock();
@@ -302,7 +302,7 @@ bool Estimator::IMUAvailable(double t)
 }
 
 /**
- * @brief 
+ * @brief 处理测量值
  * 
  * @return ** void 
  */
@@ -311,8 +311,10 @@ void Estimator::processMeasurements()
     while (1)
     {
         //printf("process measurments\n");
-        pair<double, map<int, vector<pair<int, Eigen::Matrix<double, 7, 1> > > > > feature; // 特征点容器
-        vector<pair<double, Eigen::Vector3d>> accVector, gyrVector; // 两帧图像之间的加速度、角速度容器
+        // 特征点容器， 时间戳 -> 光流追踪结果map（特征点id， camera id， 特征性质）
+        pair<double, map<int, vector<pair<int, Eigen::Matrix<double, 7, 1> > > > > feature;
+        // 两帧图像之间的加速度、角速度容器
+        vector<pair<double, Eigen::Vector3d>> accVector, gyrVector;
         if(!featureBuf.empty())
         {
             // Step 1、取出当前帧光流追踪以及提取的结果
@@ -413,8 +415,9 @@ void Estimator::initFirstIMUPose(vector<pair<double, Eigen::Vector3d>> &accVecto
     {
         averAcc = averAcc + accVector[i].second;
     }
-    averAcc = averAcc / n;  //  取目前为止所有加速度测量值的平均。认为在开始的一段时间内加速度中重力占比大，基本由重力组成
-                            // 很多值的累加，导致重力比例更大，即可以忽略其他因素的影响。用这个平均值来代替重力，用于估计世界坐标系到重力方向的转换
+    // 取目前为止所有加速度测量值的平均。认为在开始的一段时间内加速度中重力占比大，基本由重力组成
+    // 很多值的累加，导致重力比例更大，即可以忽略其他因素的影响。用这个平均值来代替重力，用于估计世界坐标系到重力方向的转换
+    averAcc = averAcc / n;  
     printf("averge acc %f %f %f\n", averAcc.x(), averAcc.y(), averAcc.z());
     Matrix3d R0 = Utility::g2R(averAcc); // 将IMU的Z轴与重力方向的对齐转换初值
     double yaw = Utility::R2ypr(R0).x();
@@ -476,7 +479,7 @@ void Estimator::processIMU(double t, double dt, const Vector3d &linear_accelerat
 }
 
 /**
- * @brief 
+ * @brief 处理图像部分
  * 
  * @param image 
  * @param header 
@@ -552,7 +555,7 @@ void Estimator::processImage(const map<int, vector<pair<int, Eigen::Matrix<doubl
                 if(ESTIMATE_EXTRINSIC != 2 && (header - initial_timestamp) > 0.1)          // (header - initial_timestamp) > 0.1，上一次初始化距离这次初始化的时间超过了0.1s
                 {
                     result = initialStructure();
-                    initial_timestamp = header;   
+                    initial_timestamp = header;
                 }
                 // Step B：结果的再优化
                 if(result)

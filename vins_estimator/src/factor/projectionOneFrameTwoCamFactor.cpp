@@ -53,6 +53,9 @@ bool ProjectionOneFrameTwoCamFactor::Evaluate(double const *const *parameters, d
 
     double td = parameters[3][0];
 
+    /**
+     * 基于以下投影关系和求导链式法则确定残差e对各状态量的雅可比
+    */
     Eigen::Vector3d pts_i_td, pts_j_td;
     pts_i_td = pts_i - (td - td_i) * velocity_i;
     pts_j_td = pts_j - (td - td_j) * velocity_j;
@@ -66,6 +69,7 @@ bool ProjectionOneFrameTwoCamFactor::Evaluate(double const *const *parameters, d
     Eigen::Vector3d pts_camera_j = qic2.inverse() * (pts_imu_j - tic2);
     Eigen::Map<Eigen::Vector2d> residual(residuals);
 
+    // 残差e
 #ifdef UNIT_SPHERE_ERROR 
     residual =  tangent_base * (pts_camera_j.normalized() - pts_j_td.normalized());
 #else
@@ -80,6 +84,7 @@ bool ProjectionOneFrameTwoCamFactor::Evaluate(double const *const *parameters, d
         Eigen::Matrix3d ric = qic.toRotationMatrix();
         Eigen::Matrix3d ric2 = qic2.toRotationMatrix();
         Eigen::Matrix<double, 2, 3> reduce(2, 3);
+        // reduce（2x3）就是残差e对pts_camera_j相机坐标的雅可比
 #ifdef UNIT_SPHERE_ERROR
         double norm = pts_camera_j.norm();
         Eigen::Matrix3d norm_jaco;
@@ -97,7 +102,7 @@ bool ProjectionOneFrameTwoCamFactor::Evaluate(double const *const *parameters, d
 #endif
         reduce = sqrt_info * reduce;
 
-        if (jacobians[0])
+        if (jacobians[0]) // 残差e对左目相机和imu之间外参的雅可比
         {
             Eigen::Map<Eigen::Matrix<double, 2, 7, Eigen::RowMajor>> jacobian_ex_pose(jacobians[0]);
             Eigen::Matrix<double, 3, 6> jaco_ex;
@@ -106,7 +111,7 @@ bool ProjectionOneFrameTwoCamFactor::Evaluate(double const *const *parameters, d
             jacobian_ex_pose.leftCols<6>() = reduce * jaco_ex;
             jacobian_ex_pose.rightCols<1>().setZero();
         }
-        if (jacobians[1])
+        if (jacobians[1]) // 残差e对右目相机和imu之间外参的雅可比
         {
             Eigen::Map<Eigen::Matrix<double, 2, 7, Eigen::RowMajor>> jacobian_ex_pose1(jacobians[1]);
             Eigen::Matrix<double, 3, 6> jaco_ex;
@@ -115,7 +120,7 @@ bool ProjectionOneFrameTwoCamFactor::Evaluate(double const *const *parameters, d
             jacobian_ex_pose1.leftCols<6>() = reduce * jaco_ex;
             jacobian_ex_pose1.rightCols<1>().setZero();
         }
-        if (jacobians[2])
+        if (jacobians[2]) // 残差e对逆深度inv_dep_i的雅可比
         {
             Eigen::Map<Eigen::Vector2d> jacobian_feature(jacobians[2]);
 #if 1
@@ -124,7 +129,7 @@ bool ProjectionOneFrameTwoCamFactor::Evaluate(double const *const *parameters, d
             jacobian_feature = reduce * ric.transpose() * Rj.transpose() * Ri * ric * pts_i;
 #endif
         }
-        if (jacobians[3])
+        if (jacobians[3]) // 残差e对时延td的雅可比（包含pts_i_td和pts_j_td）
         {
             Eigen::Map<Eigen::Vector2d> jacobian_td(jacobians[3]);
             jacobian_td = reduce * ric2.transpose() * ric * velocity_i / inv_dep_i * -1.0  +

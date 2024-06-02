@@ -114,7 +114,7 @@ void vio_callback(const nav_msgs::Odometry::ConstPtr &pose_msg)
             //printf("receive covariance %lf \n", pos_accuracy);
             //if(GPS_msg->status.status > 8)
             // 这里时间戳就不用GPS的时间戳，而是采用VIO的时间戳
-                globalEstimator.inputGPS(t, latitude, longitude, altitude, pos_accuracy);
+            globalEstimator.inputGPS(t, latitude, longitude, altitude, pos_accuracy);
             gpsQueue.pop();
             break;
         }
